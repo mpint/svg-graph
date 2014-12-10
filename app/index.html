@@ -1,0 +1,170 @@
+<!DOCTYPE html >
+<head>
+ <link rel="stylesheet" type="text/css" href="style.css"/>
+ <script type="text/javascript" src="../bower_components/underscore/underscore.js"></script>
+ <script type="text/javascript" src="../bower_components/angular/angular.min.js"></script>
+ <script type="text/javascript" src="./js/BinaryHeap.js"></script>
+ <script type="text/javascript" src="./js/dijkstras.js"></script>
+</head>
+<body ng-app="myApp">
+
+  <div class="container" ng-controller="DynamicDataController">
+
+   <h1 ng-show="found">For {{coords.join('-')}}, the shortest distance is {{distance}} along the path {{path}}</h1>
+   <h1 ng-show="!found">Click two points to compute the most efficient path</h1>
+   <div class="button">
+     <button ng-click="compute()" ng-show="!found">Compute</button>
+     <button ng-click="reset()" ng-show="found">Reset</button>
+   </div>
+
+   <div class="map">
+    <svg height="400" width="1200">
+      <!-- this code is the arrowhead -->
+      <marker xmlns="http://www.w3.org/2000/svg" id="arrowHead" viewBox="0 0 10 10" refX="0" refY="5" markerUnits="strokeWidth" markerWidth="4" markerHeight="3" orient="auto" fill="#e5e5e5">
+        <path d="M 0 0 L 10 5 L 0 10 z"/>
+      </marker>
+
+      <!-- edges-->
+      <!-- 0 -->
+      <edge value="4" x1="25" y1="200" x2="170" y2="50" ng-repeat="edge in graph.edges"></edge>
+      
+      <!-- <edge value="4" x1="25" y1="200" x2="170" y2="50"></edge> -->
+      <!-- <edge value="8" x1="25" y1="200" x2="170" y2="350"></edge> -->
+      <!-- 1 -->
+      <!-- <edge value="8" x1="200" y1="25" x2="360" y2="25"></edge> -->
+      <!-- <edge value="11" x1="200" y1="25" x2="200" y2="335"></edge> -->
+      <!-- 2 -->
+      <!-- <edge value="7" x1="400" y1="25" x2="560" y2="25"></edge> -->
+      <!-- <edge value="2" x1="400" y1="25" x2="400" y2="160"></edge> -->
+      <!-- 3 -->
+      <!-- <edge value="9" x1="600" y1="25" x2="770" y2="175"></edge> -->
+      <!-- <edge value="14" x1="600" y1="25" x2="600" y2="335"></edge> -->
+      <!-- 5 -->
+      <!-- <edge value="2" x1="600" y1="375" x2="775" y2="230"></edge> -->
+      <!-- 6 -->
+      <!-- <edge value="2" x1="400" y1="375" x2="560" y2="375"></edge> -->
+      <!-- <edge value="6" x1="400" y1="375" x2="400" y2="240"></edge> -->
+      <!-- 7 -->
+      <!-- <edge value="1" x1="200" y1="375" x2="360" y2="375"></edge> -->
+      <!-- 8 -->
+      <!-- <edge value="7" x1="400" y1="200" x2="230" y2="350"></edge> -->
+
+      <!-- nodes -->
+      <node value="0" x="25" y="200" add="add(node_value)"></node>
+      <node value="1" x="200" y="25" add="add(node_value)"></node>
+      <node value="2" x="400" y="25" add="add(node_value)"></node>
+      <node value="3" x="600" y="25" add="add(node_value)"></node>
+      <node value="4" x="800" y="200" add="add(node_value)"></node>
+      <node value="5" x="600" y="375" add="add(node_value)"></node>
+      <node value="6" x="400" y="375" add="add(node_value)"></node>
+      <node value="7" x="200" y="375" add="add(node_value)"></node>
+      <node value="8" x="400" y="200" add="add(node_value)"></node>
+
+    </svg>
+  </div>
+</div>
+
+<script type="text/javascript">
+ var app = angular.module('myApp', []);
+
+ // KEY  node: {edges: {node: edgeweight}}
+ app.constant('graph', {
+  0: {edges: {1: 4, 7: 8}, score: Number.MAX_VALUE},
+  1: {edges: {2: 8, 7: 11}, score: Number.MAX_VALUE},
+  2: {edges: {8: 2, 3: 7}, score: Number.MAX_VALUE},
+  3: {edges: {4: 9, 5: 14}, score: Number.MAX_VALUE},
+  4: {edges: {}, score: Number.MAX_VALUE},
+  5: {edges: {4: 2}, score: Number.MAX_VALUE},
+  6: {edges: {5: 2, 8: 6}, score: Number.MAX_VALUE},
+  7: {edges: {6: 1}, score: Number.MAX_VALUE},
+  8: {edges: {7: 7}, score: Number.MAX_VALUE},
+})
+
+ app.controller('DynamicDataController', function ($scope, dijkstras, graph) {
+  $scope.coords = [];
+  $scope.found = false;
+
+  $scope.add = function (value) {
+    if ($scope.found) {
+      return;
+    }else if ($scope.coords.length < 2) {
+      $scope.coords.push(value);
+    } else if ($scope.coords[0] === $scope.coords[1]) {
+      $scope.coords = [];
+    } else if ($scope.coords.length === 2) {
+      $scope.coords[1] = value;
+    }
+    console.log('comparing nodes:',$scope.coords);
+  };
+
+  $scope.compute = function (value) {
+    if ($scope.coords.length === 2) {
+      var result = dijkstras.run($scope.coords[0], $scope.coords[1]);
+      $scope.found = true;
+      $scope.distance = result.distance;
+      result.path = result.path.split(' ').reverse().join('-');
+      $scope.path = result.path;
+    } else {
+      alert('choose two nodes first');
+    }
+  }
+
+  $scope.reset = function () {
+    $scope.coords = [];
+    $scope.path = '';
+    $scope.found = false;
+  }
+});
+
+app.directive('edge', function ($compile) {
+  return {
+    scope: {
+      value: '@',
+      x1: '@',
+      y1: '@',
+      x2: '@',
+      y2: '@',
+    },
+    restrict: 'E',
+    replace: true,
+    templateNamespace: 'svg',
+    template: '<g><line ng-attr-x1="{{x1}}" ng-attr-y1="{{y1}}" ng-attr-x2="{{x2}}" ng-attr-y2="{{y2}}" marker-end="url(#arrowHead)" stroke="#e5e5e5" stroke-width="5" /><text ng-attr-x="{{(x1*1 + x2*1)/2}}" ng-attr-y="{{(y2*1 + y1*1)/2}}" font-size="24" fill="green" > {{value}} </text></g>'    
+  };
+});
+
+app.directive('node', function () {
+  return {
+    scope: {
+      value: '@',
+      add: '&add',
+      x: '@',
+      y: '@',
+    },
+    restrict: 'E',
+    replace: true,
+    templateNamespace: 'svg',
+    template: '<g><circle ng-attr-cx="{{x}}" ng-attr-cy="{{y}}" r="25" fill="#999"/><text ng-attr-x="{{x*1 - 5}}" ng-attr-y="{{y*1 + 8}}" font-size="24" fill="#333" > {{value}} </text></g>',
+    link: function(scope, elem, attrs) {
+      elem.bind('click', function() {
+        scope.add({'node_value': attrs.value})
+      });
+    }
+  };
+});
+
+app.factory('dijkstras', function (graph) {
+  return {
+    run: function (to, from) {
+      var algo = new Dijkstras(graph);
+      var result = algo.calc(to, from);
+      return {
+        distance: result[0], 
+        path: result[1]
+      };
+    }
+  };
+})
+
+</script>
+</body>
+</html>
